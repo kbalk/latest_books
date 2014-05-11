@@ -1,0 +1,23 @@
+bin/latest_books.conf
+bin/latest_books.pl
+Makefile.PL
+MANIFEST			This list of files
+README.md
+t/authorbadmedia.conf
+t/badauthor.conf
+t/badmedia.conf
+t/badurl.conf
+t/bookmedia.conf
+t/default.conf
+t/goodmedia.conf
+t/ignoretitle.conf
+t/ignoretitles.conf
+t/latest_books.t
+t/noauthors.conf
+t/nodefaultmedia.conf
+t/nofirstname.conf
+t/noignore.conf
+t/nolastname.conf
+t/noliburl.conf
+t/relativeurl.conf
+t/untestedurl.conf
