@@ -564,7 +564,8 @@ sub main
 
     if ((exists($opts{'c'}) && !defined($opts{'c'})) || 
          exists($opts{h}) ||
-         !$have_valid_options)
+         !$have_valid_options ||
+         (scalar(@ARGV) != 0))
     {
         usage();
         exit(1);
