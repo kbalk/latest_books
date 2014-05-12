@@ -50,7 +50,7 @@ new path and name of the configuration file using the '-c' option.
 
 ### Prerequisites
 
-Currently, Perl version 5.16.3 or later is required to run the script
+Currently, Perl version 5.16 or later is required to run the script
 because that's the version used in testing.  It's possible earlier 
 versions (5.12 and up) will work.  
 
@@ -94,13 +94,11 @@ or other online library systems may work to some degree or may not.
     customizing the library query to the version of the online library
     system in use.  That version could be specified in the configuration 
     file.  The query values that would change include:
-
     * the media codes and types,
     * the publication date order (newest first, e.g., "&sort=310014" or
       "&sort=310013"),
     * the index value (.AW appears to work in most places, but on at 
       least one site, PAUTH was the required index value).
-
     I'm not sure how many online library system versions are prevalent 
     and how big of a task this would be.
 
