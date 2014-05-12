@@ -84,7 +84,7 @@ The default configuration file is latest_books.conf and is assumed
 to be in the same directory as the script.  It should be modified
 to list the authors that you want to track.
 
-## Limitations/TODO 
+## Limitations/Todo
 
 The script is only guaranteed to work with iPAC version 2.0 and 
 Horizon Information Portal 3.23_6380.  Other versions of the portal
@@ -101,7 +101,6 @@ or other online library systems may work to some degree or may not.
       least one site, PAUTH was the required index value).
     I'm not sure how many online library system versions are prevalent 
     and how big of a task this would be.
-
 2.  The number of publications listed on a page appear to be 10, at a
     minimum.  The assumption has been made that this is sufficient to 
     find all the publications for the current year.  It would be more
