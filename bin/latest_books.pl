@@ -45,7 +45,7 @@
 
 use strict;
 use warnings;
-use v5.16.3;
+use 5.016;
 
 use URI;
 use Web::Scraper qw(Scraper);
@@ -57,7 +57,7 @@ use File::Spec;
 use File::Basename;
 use Data::Dumper;                       # core module
 
-my $VERSION = "0.01";
+our $VERSION = '0.01';
 
 # ==========================================================================
 # Constants representing the default config file, default media type, the
@@ -97,7 +97,7 @@ my $year = strftime("%Y", localtime);
 # --------------------------------------------------------------------------
 # Debug switch - useful to have globally.
 #
-our $debug = 0;
+my $debug = 0;
 
 # ==========================================================================
 # usage - Print usage information.
@@ -199,7 +199,7 @@ sub scrape
         die $errmsg;
     };
 
-    warn Dumper($author_summary->{summary}) if ($debug);
+    print Dumper($author_summary->{summary}) if ($debug);
     return ($author_summary);
 }
 
@@ -235,7 +235,7 @@ sub print_author
         # information is in row 5.
         #
         my $publication_info = $books[$idx]->{book_info}->[4];
-        if ($publication_info =~ /^by /)
+        if ($publication_info =~ /^by\ /x)
         {
             $publication_info = $books[$idx]->{book_info}->[5];
         }
@@ -245,7 +245,11 @@ sub print_author
         # off.  Also, strip off the odd question mark "\x{a0}" sometimes 
         # appears at the end of the title.
         #
-        $title =~ s/\s*\/\s*$author\.?//;
+        $title =~ s/\s*\/         # slash
+                    \s*(by\s)?    # optional 'by '
+                    \Q$author\E   # author's name with spaces, periods
+                    \.?           # possible trailing period
+                   //x;
         $title =~ s/\x{a0}    # hex for a symbol of a '?' in a black circle
                     \*$       # don't know why it's followed by an '*'
                    //x;
@@ -264,7 +268,7 @@ sub print_author
         my $skip_title = 0;
         foreach my $ignored_title (@{$ignore_array_ref})
         {
-            if ($title =~ /$ignored_title/i)
+            if ($title =~ /\Q$ignored_title/ix)
             {
                 $skip_title = 1;
                 last;
@@ -490,41 +494,19 @@ sub config_ok
 }
 
 # ==========================================================================
-# Process command line arguments and config file, then invoke the function
-# to handle the web scrapes.
+# get_config - Given an argument of a configuration filename, if one was 
+# provided on the command line.  Reads that configuration file or the
+# default using Config::General->ParseConfig.  ParseConfig() dies if can't 
+# find or read the config file, or if it finds syntax errors.  We'll catch 
+# the failure, clean up the error message a bit and die ourself.
+#
+# Returns - contents of the configuration file in a hash reference.
 # ==========================================================================
-sub main
+sub get_config
 {
-    # ----------------------------------------------------------------------
-    # Process command line arguments.  Conditions where we want to print a 
-    # usage statement:
-    #    * when a -c is not followed by a configuration filename,
-    #    * for the -h (help) option,
-    #    * when an invalid option is given.
-    #
-    my %opts;
-    my $have_valid_options = getopts('dshvc:', \%opts);
+    my ($optional_filename) = @_;
 
-    if ((exists($opts{'c'}) && !defined($opts{'c'})) || 
-         exists($opts{h}) ||
-         !$have_valid_options)
-    {
-        usage();
-        exit(1);
-    }
-
-    $debug = $opts{'d'} // 0;
-    my $sort_option = $opts{'s'} // 0;
-
-    # ----------------------------------------------------------------------
-    # Process the config file, extracting the library URL and list of 
-    # authors.
-    #
-    # ParseConfig() dies if it can't find or read the config file, or if 
-    # it finds syntax errors.  We'll catch the failure and clean up the
-    # error message a bit.  
-    #
-    my $config_filename = $opts{'c'} // $DEFAULT_CONFIG;
+    my $config_filename = $optional_filename // $DEFAULT_CONFIG;
     my %config;
     
     try
@@ -553,14 +535,49 @@ sub main
         # that the default configuration file is in play and may not have
         # been properly customized.
         #
-        unless ($opts{'c'})
+        unless (defined($optional_filename))
         {
-            $errmsg .= " Note:  $DEFAULT_CONFIG is the default " .
-                "configuration file.\n";
+            $errmsg .= "        Default configuration file not found.\n";
         }
 
         die $errmsg;
     };
+
+    return \%config;
+}
+
+# ==========================================================================
+# Process command line arguments and config file, then invoke the function
+# to handle the web scrapes.
+# ==========================================================================
+sub main
+{
+    # ----------------------------------------------------------------------
+    # Process command line arguments.  Conditions where we want to print a 
+    # usage statement:
+    #    * when a -c is not followed by a configuration filename,
+    #    * for the -h (help) option,
+    #    * when an invalid option is given.
+    #
+    my %opts;
+    my $have_valid_options = getopts('dshvc:', \%opts);
+
+    if ((exists($opts{'c'}) && !defined($opts{'c'})) || 
+         exists($opts{h}) ||
+         !$have_valid_options)
+    {
+        usage();
+        exit(1);
+    }
+
+    $debug = $opts{'d'} // 0;           # $debug has file scope
+    my $sort_option = $opts{'s'} // 0;
+
+    # ----------------------------------------------------------------------
+    # Process the config file, extracting the library URL and list of 
+    # authors.  If there's an error 
+    #
+    my $config_hashref = get_config($opts{'c'});
 
     # ----------------------------------------------------------------------
     # If the user only wants to view the config file and not process it, 
@@ -568,7 +585,7 @@ sub main
     #
     if (exists($opts{'v'}))
     {
-        print Data::Dumper->Dump([\%config], ["*config"]);
+        print Data::Dumper->Dump([$config_hashref], ["*config"]);
         return;
     }
 
@@ -576,7 +593,8 @@ sub main
     # If the user hasn't specified any authors in the configuration file, 
     # then there's nothing to do.  Warn the users and exit.
     #
-    if (!exists($config{'Author'}) || !defined($config{'Author'}))
+    if (!exists($config_hashref->{'Author'}) || 
+        !defined($config_hashref->{'Author'}))
     {
         warn "Nothing to do -- no authors found in config file.\n";
         return;
@@ -587,15 +605,15 @@ sub main
     # only list a single author, then we need to convert the single hash
     # entry into an array of hashes for consistency in processing.
     #
-    my @authors = (ref($config{'Author'}) eq 'HASH') ?
-        ($config{'Author'}) : @{$config{'Author'}};
+    my @authors = (ref($config_hashref->{'Author'}) eq 'HASH') ?
+        ($config_hashref->{'Author'}) : @{$config_hashref->{'Author'}};
 
     # ----------------------------------------------------------------------
     # Now perform additional sanity checks on the contents to make sure the 
     # configuration file is good.
     #
-    my $liburl = $config{'LibraryURL'};
-    my $default_media_type = $config{'MediaType'} // $DEFAULT_MEDIA;
+    my $liburl = $config_hashref->{'LibraryURL'};
+    my $default_media_type = $config_hashref->{'MediaType'} // $DEFAULT_MEDIA;
 
     unless (config_ok($liburl, $default_media_type, \@authors))
     {
